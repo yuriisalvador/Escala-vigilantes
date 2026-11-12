@@ -36,6 +36,7 @@
         
         .history { font-size: 0.8rem; margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; }
         .history-item { padding: 4px 0; border-bottom: 1px dashed #eee; }
+        .loading { text-align: center; font-style: italic; color: #666; font-size: 0.8rem; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -43,6 +44,8 @@
 <div class="container">
     <h2>ESCALA DE EXTRA - VIGILANTES</h2>
     <div class="subtitle">Julimar Paiva / Dias Várzea</div>
+
+    <div class="loading" id="msgCarregando">Sincronizando com a nuvem...</div>
 
     <div class="panel" id="infoPanel">
         <div><b>Vigilante da Vez:</b> <span id="lblVez">ELISNA</span></div>
@@ -90,7 +93,7 @@
 </div>
 
 <script>
-    // SENHA DE 8 CARACTERES (Você pode alterar entre as aspas se preferir)
+    const SHEETDB_URL = "https://sheetdb.io/api/v1/j5ovgvrzvutpq";
     const SENHA_ADMIN = "Escala26"; 
 
     const nomesVigilantes = [
@@ -100,13 +103,59 @@
         "WASHINGTON", "HELENA", "VITÓRIA"
     ];
 
-    let currentIndex = localStorage.getItem("currentIndex") !== null ? parseInt(localStorage.getItem("currentIndex")) : 9;
-    let historico = JSON.parse(localStorage.getItem("historico")) || [];
-    let estatisticas = JSON.parse(localStorage.getItem("estatisticas")) || {};
+    let currentIndex = 9;
+    let historico = [];
+    let estatisticas = {};
 
     nomesVigilantes.forEach(n => {
-        if(!estatisticas[n]) estatisticas[n] = { aceitos: 0, negados: 0 };
+        estatisticas[n] = { aceitos: 0, negados: 0 };
     });
+
+    async function carregarDadosDaNuvem() {
+        try {
+            let response = await fetch(SHEETDB_URL);
+            let data = await response.json();
+            
+            if (data && data.length > 0) {
+                let registro = data[0]; // Pega a primeira linha da planilha
+                currentIndex = parseInt(registro.currentIndex) || 9;
+                
+                if (registro.historico && registro.historico !== "Nenhum registro") {
+                    try { historico = JSON.parse(registro.historico); } catch(e) { historico = []; }
+                }
+                
+                if (registro.estatisticas && registro.estatisticas !== "{}") {
+                    try { estatisticas = JSON.parse(registro.estatisticas); } catch(e) {}
+                }
+            }
+            document.getElementById("msgCarregando").style.display = "none";
+            atualizarTela();
+        } catch (error) {
+            document.getElementById("msgCarregando").textContent = "Erro ao sincronizar. Usando dados locais.";
+            atualizarTela();
+        }
+    }
+
+    async function salvarDadosNaNuvem() {
+        let dadosParaSalvar = {
+            currentIndex: currentIndex,
+            historico: JSON.stringify(historico),
+            estatisticas: JSON.stringify(estatisticas)
+        };
+
+        try {
+            await fetch(`${SHEETDB_URL}/id/1`, {
+                method: 'PUT',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ data: dadosParaSalvar })
+            });
+        } catch (error) {
+            console.error("Erro ao salvar na nuvem:", error);
+        }
+    }
 
     function atualizarTela() {
         const tbody = document.getElementById("tabelaCorpo");
@@ -140,13 +189,14 @@
             tdNome.className = "col-nome";
             tdNome.textContent = nome;
 
+            let stats = estatisticas[nome] || { aceitos: 0, negados: 0 };
             let tdAceitos = document.createElement("td");
             tdAceitos.className = "col-qtd";
-            tdAceitos.textContent = estatisticas[nome].aceitos;
+            tdAceitos.textContent = stats.aceitos;
 
             let tdNegados = document.createElement("td");
             tdNegados.className = "col-qtd";
-            tdNegados.textContent = estatisticas[nome].negados;
+            tdNegados.textContent = stats.negados;
 
             tr.appendChild(tdSeq);
             tr.appendChild(tdNum);
@@ -186,13 +236,17 @@
         document.getElementById("divLoginBtn").style.display = "block";
     }
 
-    function registrarExtra() {
+    async function registrarExtra() {
         let nome = document.getElementById("selectVigilante").value;
         let status = document.getElementById("selectStatus").value;
 
         if(!nome) {
             alert("Selecione um vigilante!");
             return;
+        }
+
+        if(!estatisticas[nome]) {
+            estatisticas[nome] = { aceitos: 0, negados: 0 };
         }
 
         if(status === "ACEITOU") {
@@ -207,16 +261,16 @@
         let dataHora = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
         historico.push({ nome, status, data: dataHora });
 
-        localStorage.setItem("currentIndex", currentIndex);
-        localStorage.setItem("historico", JSON.stringify(historico));
-        localStorage.setItem("estatisticas", JSON.stringify(estatisticas));
-
-        document.getElementById("selectVigilante").value = "";
         atualizarTela();
-        alert("Registro salvo com sucesso! O próximo da vez já foi atualizado.");
+        document.getElementById("selectVigilante").value = "";
+        alert("Salvando na nuvem... Aguarde um instante.");
+
+        await salvarDadosNaNuvem();
+        alert("Registro salvo com sucesso e sincronizado para todos!");
     }
 
-    window.onload = atualizarTela;
+    // Carrega os dados da nuvem assim que a página abre
+    window.onload = carregarDadosDaNuvem;
 </script>
 
 </body>
