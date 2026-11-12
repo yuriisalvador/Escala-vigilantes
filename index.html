@@ -24,12 +24,15 @@
 
         .proximo { background-color: #002060 !important; color: #fff !important; }
         
-        .admin-box { background: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 6px; margin-top: 15px; }
+        .login-admin { text-align: center; margin: 15px 0; }
+        .btn-login { background-color: #6c757d; color: white; border: none; padding: 8px 12px; font-size: 0.85rem; border-radius: 4px; cursor: pointer; }
+
+        .admin-box { background: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 6px; margin-top: 15px; display: none; }
         .admin-box h4 { margin: 0 0 8px 0; color: #856404; font-size: 0.95rem; }
         select, button { padding: 6px; margin: 4px 0; font-size: 0.85rem; width: 100%; box-sizing: border-box; }
         
         .btn-aceito { background-color: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; }
-        .btn-negou { background-color: #dc3545; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        .btn-sair { background-color: #dc3545; color: white; border: none; padding: 4px 8px; font-size: 0.75rem; border-radius: 4px; float: right; cursor: pointer; }
         
         .history { font-size: 0.8rem; margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; }
         .history-item { padding: 4px 0; border-bottom: 1px dashed #eee; }
@@ -61,7 +64,14 @@
         </tbody>
     </table>
 
-    <div class="admin-box">
+    <!-- Botão de Acesso Admin -->
+    <div class="login-admin" id="divLoginBtn">
+        <button class="btn-login" onclick="fazerLogin()">🔒 Área do Administrador</button>
+    </div>
+
+    <!-- Painel Protegido do ADM -->
+    <div class="admin-box" id="adminPainel">
+        <button class="btn-sair" onclick="fazerLogout()">Sair do ADM</button>
         <h4>Painel do Encarregado (Lançar Resposta)</h4>
         <select id="selectVigilante">
             <option value="">Selecione o vigilante consultado...</option>
@@ -80,6 +90,9 @@
 </div>
 
 <script>
+    // SENHA DE 8 CARACTERES (Você pode alterar entre as aspas se preferir)
+    const SENHA_ADMIN = "Escala26"; 
+
     const nomesVigilantes = [
         "MARCILENE", "LUCAS", "JASELMO", "JOSIVAN", "MÁRIO", "AURÉLIO", 
         "CLOVES", "STAYNE", "TAVARES", "ELISNA", "DEVISON", "BALBINO", 
@@ -87,7 +100,6 @@
         "WASHINGTON", "HELENA", "VITÓRIA"
     ];
 
-    // Carregar dados salvos ou iniciar padrão (Elisna é a 10ª, índice 9)
     let currentIndex = localStorage.getItem("currentIndex") !== null ? parseInt(localStorage.getItem("currentIndex")) : 9;
     let historico = JSON.parse(localStorage.getItem("historico")) || [];
     let estatisticas = JSON.parse(localStorage.getItem("estatisticas")) || {};
@@ -144,12 +156,10 @@
             tbody.appendChild(tr);
         });
 
-        // Painel
         document.getElementById("lblVez").textContent = nomesVigilantes[currentIndex];
         let nextIdx = (currentIndex + 1) % nomesVigilantes.length;
         document.getElementById("lblDepois").textContent = nomesVigilantes[nextIdx];
 
-        // Histórico
         let histDiv = document.getElementById("listaHistorico");
         if(historico.length === 0) {
             histDiv.innerHTML = "Nenhum registro ainda.";
@@ -158,6 +168,22 @@
                 `<div class="history-item"><b>${h.nome}</b> - <span style="color:${h.status==='ACEITOU'?'green':'red'}">${h.status}</span> (${h.data})</div>`
             ).join('');
         }
+    }
+
+    function fazerLogin() {
+        let senhaDigitada = prompt("Digite a senha de Administrador:");
+        if (senhaDigitada === SENHA_ADMIN) {
+            document.getElementById("adminPainel").style.display = "block";
+            document.getElementById("divLoginBtn").style.display = "none";
+            alert("Acesso liberado, ADM!");
+        } else if (senhaDigitada !== null) {
+            alert("Senha incorreta!");
+        }
+    }
+
+    function fazerLogout() {
+        document.getElementById("adminPainel").style.display = "none";
+        document.getElementById("divLoginBtn").style.display = "block";
     }
 
     function registrarExtra() {
@@ -175,14 +201,12 @@
             estatisticas[nome].negados++;
         }
 
-        // Acha a posição do vigilante escolhido e avança o "PRÓXIMO 1" para o de baixo
         let idxEscolhido = nomesVigilantes.indexOf(nome);
         currentIndex = (idxEscolhido + 1) % nomesVigilantes.length;
 
         let dataHora = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
         historico.push({ nome, status, data: dataHora });
 
-        // Salvar na memória do navegador
         localStorage.setItem("currentIndex", currentIndex);
         localStorage.setItem("historico", JSON.stringify(historico));
         localStorage.setItem("estatisticas", JSON.stringify(estatisticas));
