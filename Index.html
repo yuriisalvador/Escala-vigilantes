@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escala de Extra - Vigilantes</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 10px; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #002060; font-size: 1.2rem; margin-bottom: 5px; }
+        .subtitle { text-align: center; font-size: 0.85rem; color: #666; margin-bottom: 15px; }
+        
+        .panel { background: #e8eef5; border: 1px solid #b4c6e7; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9rem; }
+        .panel b { color: #002060; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 0.85rem; }
+        th, td { border: 1px solid #000; padding: 6px 4px; text-align: center; }
+        th { background-color: #7f7f7f; color: #fff; }
+        
+        .col-seq { width: 22%; font-weight: bold; font-size: 0.75rem; }
+        .col-num { width: 12%; }
+        .col-nome { width: 44%; text-align: left; padding-left: 8px; font-weight: bold; }
+        .col-qtd { width: 11%; }
+
+        .proximo { background-color: #002060 !important; color: #fff !important; }
+        
+        .admin-box { background: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 6px; margin-top: 15px; }
+        .admin-box h4 { margin: 0 0 8px 0; color: #856404; font-size: 0.95rem; }
+        select, button { padding: 6px; margin: 4px 0; font-size: 0.85rem; width: 100%; box-sizing: border-box; }
+        
+        .btn-aceito { background-color: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        .btn-negou { background-color: #dc3545; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        
+        .history { font-size: 0.8rem; margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; }
+        .history-item { padding: 4px 0; border-bottom: 1px dashed #eee; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>ESCALA DE EXTRA - VIGILANTES</h2>
+    <div class="subtitle">Julimar Paiva / Dias Várzea</div>
+
+    <div class="panel" id="infoPanel">
+        <div><b>Vigilante da Vez:</b> <span id="lblVez">ELISNA</span></div>
+        <div><b>Próximo na Fila:</b> <span id="lblDepois">DEVISON</span></div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>SEQUÊNCIA</th>
+                <th>Nº</th>
+                <th>VIGILANTES NOMES</th>
+                <th>ACEITOS</th>
+                <th>NEGADOS</th>
+            </tr>
+        </thead>
+        <tbody id="tabelaCorpo">
+            <!-- Gerado via JavaScript -->
+        </tbody>
+    </table>
+
+    <div class="admin-box">
+        <h4>Painel do Encarregado (Lançar Resposta)</h4>
+        <select id="selectVigilante">
+            <option value="">Selecione o vigilante consultado...</option>
+        </select>
+        <select id="selectStatus">
+            <option value="ACEITOU">ACEITOU</option>
+            <option value="NEGOU">NEGOU</option>
+        </select>
+        <button class="btn-aceito" onclick="registrarExtra()">REGISTRAR RESPOSTA</button>
+    </div>
+
+    <div class="history">
+        <b>Histórico de Chamados:</b>
+        <div id="listaHistorico">Nenhum registro ainda.</div>
+    </div>
+</div>
+
+<script>
+    const nomesVigilantes = [
+        "MARCILENE", "LUCAS", "JASELMO", "JOSIVAN", "MÁRIO", "AURÉLIO", 
+        "CLOVES", "STAYNE", "TAVARES", "ELISNA", "DEVISON", "BALBINO", 
+        "GONÇALVES", "ARISTIDES", "LEMOS", "GEAN", "CORREIA", "SALVADOR", 
+        "WASHINGTON", "HELENA", "VITÓRIA"
+    ];
+
+    // Carregar dados salvos ou iniciar padrão (Elisna é a 10ª, índice 9)
+    let currentIndex = localStorage.getItem("currentIndex") !== null ? parseInt(localStorage.getItem("currentIndex")) : 9;
+    let historico = JSON.parse(localStorage.getItem("historico")) || [];
+    let estatisticas = JSON.parse(localStorage.getItem("estatisticas")) || {};
+
+    nomesVigilantes.forEach(n => {
+        if(!estatisticas[n]) estatisticas[n] = { aceitos: 0, negados: 0 };
+    });
+
+    function atualizarTela() {
+        const tbody = document.getElementById("tabelaCorpo");
+        tbody.innerHTML = "";
+        
+        const selectVig = document.getElementById("selectVigilante");
+        selectVig.innerHTML = '<option value="">Selecione o vigilante consultado...</option>';
+        nomesVigilantes.forEach(n => {
+            let opt = document.createElement("option");
+            opt.value = n;
+            opt.textContent = n;
+            selectVig.appendChild(opt);
+        });
+
+        nomesVigilantes.forEach((nome, idx) => {
+            let numSeq = idx + 1;
+            let tr = document.createElement("tr");
+            
+            let tdSeq = document.createElement("td");
+            tdSeq.className = "col-seq";
+            if (idx === currentIndex) {
+                tdSeq.textContent = "PRÓXIMO 1";
+                tdSeq.classList.add("proximo");
+            }
+
+            let tdNum = document.createElement("td");
+            tdNum.className = "col-num";
+            tdNum.textContent = numSeq + "º";
+
+            let tdNome = document.createElement("td");
+            tdNome.className = "col-nome";
+            tdNome.textContent = nome;
+
+            let tdAceitos = document.createElement("td");
+            tdAceitos.className = "col-qtd";
+            tdAceitos.textContent = estatisticas[nome].aceitos;
+
+            let tdNegados = document.createElement("td");
+            tdNegados.className = "col-qtd";
+            tdNegados.textContent = estatisticas[nome].negados;
+
+            tr.appendChild(tdSeq);
+            tr.appendChild(tdNum);
+            tr.appendChild(tdNome);
+            tr.appendChild(tdAceitos);
+            tr.appendChild(tdNegados);
+            tbody.appendChild(tr);
+        });
+
+        // Painel
+        document.getElementById("lblVez").textContent = nomesVigilantes[currentIndex];
+        let nextIdx = (currentIndex + 1) % nomesVigilantes.length;
+        document.getElementById("lblDepois").textContent = nomesVigilantes[nextIdx];
+
+        // Histórico
+        let histDiv = document.getElementById("listaHistorico");
+        if(historico.length === 0) {
+            histDiv.innerHTML = "Nenhum registro ainda.";
+        } else {
+            histDiv.innerHTML = historico.slice(-5).reverse().map(h => 
+                `<div class="history-item"><b>${h.nome}</b> - <span style="color:${h.status==='ACEITOU'?'green':'red'}">${h.status}</span> (${h.data})</div>`
+            ).join('');
+        }
+    }
+
+    function registrarExtra() {
+        let nome = document.getElementById("selectVigilante").value;
+        let status = document.getElementById("selectStatus").value;
+
+        if(!nome) {
+            alert("Selecione um vigilante!");
+            return;
+        }
+
+        if(status === "ACEITOU") {
+            estatisticas[nome].aceitos++;
+        } else {
+            estatisticas[nome].negados++;
+        }
+
+        // Acha a posição do vigilante escolhido e avança o "PRÓXIMO 1" para o de baixo
+        let idxEscolhido = nomesVigilantes.indexOf(nome);
+        currentIndex = (idxEscolhido + 1) % nomesVigilantes.length;
+
+        let dataHora = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+        historico.push({ nome, status, data: dataHora });
+
+        // Salvar na memória do navegador
+        localStorage.setItem("currentIndex", currentIndex);
+        localStorage.setItem("historico", JSON.stringify(historico));
+        localStorage.setItem("estatisticas", JSON.stringify(estatisticas));
+
+        document.getElementById("selectVigilante").value = "";
+        atualizarTela();
+        alert("Registro salvo com sucesso! O próximo da vez já foi atualizado.");
+    }
+
+    window.onload = atualizarTela;
+</script>
+
+</body>
+</html>
